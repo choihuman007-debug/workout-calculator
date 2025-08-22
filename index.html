@@ -2,31 +2,31 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>운동강도 계산기 (모바일 최적화)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운동강도 계산기</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
     *{box-sizing:border-box}
     html,body{height:100%;margin:0;font-family:'Open Sans',sans-serif;-webkit-font-smoothing:antialiased}
-    body{display:flex;justify-content:center;align-items:flex-start;padding:18px;background:#f6fbff}
-    .card{width:100%;max-width:720px;background:#fff;border-radius:14px;padding:20px;box-shadow:0 10px 30px rgba(20,40,80,0.06)}
-    h1{text-align:center;color:#1565c0;margin:6px 0 12px;font-size:20px}
-    label{display:block;margin-top:12px;color:#1565c0;font-weight:600;font-size:14px}
-    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-    .full{grid-column:1/-1}
-    input,select{width:100%;padding:12px;border:1px solid #e1e8f3;border-radius:10px;background:#fbfeff;font-size:15px}
+    body{display:flex;justify-content:center;align-items:flex-start;padding:20px;background:#f6fbff}
+    .card{width:100%;max-width:640px;background:#fff;border-radius:14px;padding:22px;box-shadow:0 10px 30px rgba(20,40,80,0.06)}
+    h1{text-align:center;color:#1565c0;margin:6px 0 14px;font-size:22px}
+    .row{display:flex;gap:12px}
+    label{display:block;margin-top:12px;color:#1565c0;font-weight:600}
+    input,select{width:100%;padding:12px;border:1px solid #e1e8f3;border-radius:10px;background:#fbfeff}
     input[type=number]{-moz-appearance:textfield}
-    button{width:100%;padding:13px;border-radius:12px;border:none;background:#1976d2;color:#fff;font-weight:700;font-size:16px;margin-top:14px;cursor:pointer}
-    button:active{transform:scale(.997)}
-    .result{margin-top:16px;color:#0d47a1;opacity:0;max-height:0;overflow:hidden;transition:opacity .45s,max-height .45s}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    .full{grid-column:1/-1}
+    button{width:100%;padding:13px;border-radius:12px;border:none;background:#1976d2;color:#fff;font-weight:700;font-size:16px;cursor:pointer;margin-top:16px}
+    .result{margin-top:18px;color:#0d47a1;opacity:0;max-height:0;overflow:hidden;transition:opacity .45s,max-height .45s}
     .result.visible{opacity:1;max-height:1200px}
     .table-wrap{overflow:auto;margin-top:8px}
     table{width:100%;border-collapse:collapse;min-width:520px}
-    th,td{text-align:center;padding:10px;border-bottom:1px solid #eef6ff;white-space:nowrap;font-size:14px}
+    th,td{text-align:center;padding:10px;border-bottom:1px solid #eef6ff;white-space:nowrap}
     th{background:#eaf4ff;color:#1565c0;font-weight:700}
     .zone{background:#f8fbff}
     .highlight{background:#dff2ff;font-weight:700}
-    .note{margin-top:10px;color:#4c596b;font-size:13px}
+    .note{margin-top:8px;color:#4c596b;font-size:13px}
     @media (max-width:520px){.grid{grid-template-columns:1fr}table{min-width:420px}h1{font-size:18px}}
   </style>
 </head>
@@ -37,7 +37,10 @@
     <div class="grid">
       <div>
         <label for="gender">성별</label>
-        <select id="gender"><option value="male">남성</option><option value="female">여성</option></select>
+        <select id="gender">
+          <option value="male">남성</option>
+          <option value="female">여성</option>
+        </select>
       </div>
 
       <div>
@@ -46,8 +49,8 @@
       </div>
 
       <div>
-        <label for="bodyWeight">체중 (kg)</label>
-        <input id="bodyWeight" type="number" inputmode="numeric" placeholder="예: 70" />
+        <label for="weight">체중 (kg)</label>
+        <input id="weight" type="number" inputmode="numeric" placeholder="예: 70" />
       </div>
 
       <div>
@@ -79,47 +82,94 @@
     <button id="calcBtn" type="button">계산하기</button>
 
     <div id="result" class="result" aria-live="polite"></div>
-    <div class="note">팁: 모바일에서 입력 후 바로 누를 때 일부 키보드가 값 반영을 지연할 수 있어 자동으로 포커스를 해제하고 짧은 지연을 둡니다.</div>
+    <div class="note">팁: 모바일에서 입력 후 즉시 계산을 눌렀을 때 일부 키보드에서 값 반영되지 않을 수 있어 자동으로 포커스를 해제하고 약간의 지연을 둡니다.</div>
   </main>
 
 <script>
-/* -------------------------
-   안전 처리 유틸리티
-   ------------------------- */
-function sanitizeNumber(v){
-  if (v === null || v === undefined) return NaN;
-  const s = String(v).trim().replace(/,/g,'').replace(/\s+/g,'');
-  if (s === '') return NaN;
-  const n = Number(s);
-  return isFinite(n) ? n : NaN;
-}
-const ua = navigator.userAgent || '';
-const isIOS = /iP(hone|od|ad)/.test(ua);
+  // utils: 안전한 숫자 변환 (쉼표 제거 등)
+  function sanitizeNumber(v){
+    if (v === null || v === undefined) return NaN;
+    const s = String(v).trim().replace(/,/g,'');
+    if (s === '') return NaN;
+    const n = Number(s);
+    return isFinite(n) ? n : NaN;
+  }
 
-/* -------------------------
-   테이블 생성 (구간별)
-   ------------------------- */
-function buildTable(oneRM, trainingPct){
-  const zones = [
-    {label:'85~100', minPct:85, maxPct:100, min:0.85, max:1.00, name:'순발력 (Power)', reps:'1~2회', rest:'2~5분'},
-    {label:'75~84',  minPct:75, maxPct:84,  min:0.75, max:0.84, name:'근력 (Strength)', reps:'3~5회', rest:'2~3분'},
-    {label:'65~74',  minPct:65, maxPct:74,  min:0.65, max:0.74, name:'근비대 (Hypertrophy)', reps:'6~12회', rest:'30~90초'},
-    {label:'20~64',  minPct:20, maxPct:64,  min:0.20, max:0.64, name:'근지구력 (Muscular Endurance)', reps:'12~20회 이상', rest:'30초 이내'}
-  ];
+  // iOS detection (키보드 처리 지연을 더 줄 필요가 있을 때)
+  const ua = navigator.userAgent || '';
+  const isIOS = /iP(hone|od|ad)/.test(ua);
 
-  let html = `<div><strong>예상 1RM:</strong> <span style="font-size:1.05rem;font-weight:700">${oneRM} kg</span></div>`;
-  html += '<div class="table-wrap"><table role="table" aria-label="강도 표"><thead><tr><th>강도 (%)</th><th>중량 범위</th><th>유형</th><th>권장 반복 수</th><th>휴식 시간</th></tr></thead><tbody>';
+  function buildTable(oneRM, trainingPct){
+    const zones = [
+      {label:'85~100', minPct:85, maxPct:100, min:0.85, max:1.00, name:'순발력 (Power)', reps:'1~2회', rest:'2~5분'},
+      {label:'75~84',  minPct:75, maxPct:84,  min:0.75, max:0.84, name:'근력 (Strength)', reps:'3~5회', rest:'2~3분'},
+      {label:'65~74',  minPct:65, maxPct:74,  min:0.65, max:0.74, name:'근비대 (Hypertrophy)', reps:'6~12회', rest:'30~90초'},
+      {label:'20~64',  minPct:20, maxPct:64,  min:0.20, max:0.64, name:'근지구력 (Muscular Endurance)', reps:'12~20회 이상', rest:'30초 이내'}
+    ];
 
-  zones.forEach(z=>{
-    const minW = Math.round(oneRM * z.min);
-    const maxW = Math.round(oneRM * z.max);
-    const highlighted = (trainingPct >= z.minPct && trainingPct <= z.maxPct) ? ' highlight' : '';
-    html += `<tr class="zone${highlighted}"><td>${z.label}%</td><td>${minW} ~ ${maxW} kg</td><td>${z.name}</td><td>${z.reps}</td><td>${z.rest}</td></tr>`;
+    let html = `<div><strong>예상 1RM:</strong> <span style="font-size:1.05rem;font-weight:700">${oneRM} kg</span></div>`;
+    html += '<div class="table-wrap"><table role="table" aria-label="강도 표"><thead><tr><th>강도 (%)</th><th>중량 범위</th><th>유형</th><th>권장 반복 수</th><th>휴식 시간</th></tr></thead><tbody>';
+
+    zones.forEach(z => {
+      const minW = Math.round(oneRM * z.min);
+      const maxW = Math.round(oneRM * z.max);
+      const highlight = (trainingPct >= z.minPct && trainingPct <= z.maxPct) ? ' highlight' : '';
+      html += `<tr class="zone${highlight}"><td>${z.label}%</td><td>${minW} ~ ${maxW} kg</td><td>${z.name}</td><td>${z.reps}</td><td>${z.rest}</td></tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  // 주 함수: blur -> delay -> 계산 (mobile keyboard commit 문제 회피)
+  document.getElementById('calcBtn').addEventListener('click', function(){
+    const maxWInput = document.getElementById('maxWeight');
+    const repsInput = document.getElementById('reps');
+    const ageInput = document.getElementById('age');
+    const weightInput = document.getElementById('weight');
+    const heightInput = document.getElementById('height');
+
+    // 강제 포커스 해제(모바일 키보드 관련 값 반영 보장)
+    [maxWInput,repsInput,ageInput,weightInput,heightInput].forEach(el => { try{ el.blur(); }catch(e){}});
+
+    const delay = isIOS ? 350 : 180; // iOS는 입력 반영이 느린 경우가 있어 딜레이를 조금 더 줌
+
+    setTimeout(() => {
+      const maxW = sanitizeNumber(maxWInput.value);
+      const reps = parseInt(sanitizeNumber(repsInput.value),10);
+      const age = sanitizeNumber(ageInput.value);
+      const bodyWeight = sanitizeNumber(weightInput.value);
+      const height = sanitizeNumber(heightInput.value);
+      const exercise = document.getElementById('exercise').value;
+      const resultDiv = document.getElementById('result');
+
+      // 입력 검증
+      if (isNaN(maxW) || maxW <= 0 || isNaN(reps) || reps <= 0) {
+        resultDiv.innerHTML = '⚠️ 최대 반복 무게와 반복 횟수를 정확히 입력해 주세요.';
+        resultDiv.classList.add('visible');
+        resultDiv.scrollIntoView({behavior:'smooth',block:'start'});
+        return;
+      }
+
+      // 1RM 추정 (Epley)
+      const oneRM = Math.round(maxW * (1 + reps / 30));
+
+      // 현재 훈련 강도 퍼센트
+      const trainingPct = Math.round((maxW / oneRM) * 100);
+
+      // 빌드 및 렌더
+      try{
+        resultDiv.innerHTML = buildTable(oneRM, trainingPct);
+        resultDiv.classList.add('visible');
+        setTimeout(()=>{ try{ resultDiv.scrollIntoView({behavior:'smooth',block:'start'}) }catch(e){} }, 200);
+      }catch(err){
+        resultDiv.innerHTML = '오류가 발생했습니다. 콘솔을 확인하세요.';
+        resultDiv.classList.add('visible');
+        console.error(err);
+      }
+
+    }, delay);
   });
-
-  html += '</tbody></table></div>';
-  return html;
-}
-
-/* -------------------------
-   핵심: 모바일 입력 반영 보장 + 이벤트 바인딩
+</script>
+</body>
+</html>

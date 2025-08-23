@@ -1,9 +1,20 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  <!-- Google Analytics (GA4) 스니펫: 이 블록을 <head> 맨 위에 넣으세요 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J02C74RJJQ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-J02C74RJJQ');
+  </script>
+  <!-- GA4 스니펫 끝 -->
+
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>운동강도 계산기</title>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
     *{box-sizing:border-box}
@@ -11,10 +22,8 @@
     body{display:flex;justify-content:center;align-items:flex-start;padding:20px;background:#f6fbff}
     .card{width:100%;max-width:640px;background:#fff;border-radius:14px;padding:22px;box-shadow:0 10px 30px rgba(20,40,80,0.06)}
     h1{text-align:center;color:#1565c0;margin:6px 0 14px;font-size:22px}
-    .row{display:flex;gap:12px}
     label{display:block;margin-top:12px;color:#1565c0;font-weight:600}
     input,select{width:100%;padding:12px;border:1px solid #e1e8f3;border-radius:10px;background:#fbfeff}
-    input[type=number]{-moz-appearance:textfield}
     .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
     .full{grid-column:1/-1}
     button{width:100%;padding:13px;border-radius:12px;border:none;background:#1976d2;color:#fff;font-weight:700;font-size:16px;cursor:pointer;margin-top:16px}
@@ -86,7 +95,7 @@
   </main>
 
 <script>
-  // utils: 안전한 숫자 변환 (쉼표 제거 등)
+  // 숫자 정리
   function sanitizeNumber(v){
     if (v === null || v === undefined) return NaN;
     const s = String(v).trim().replace(/,/g,'');
@@ -95,7 +104,7 @@
     return isFinite(n) ? n : NaN;
   }
 
-  // iOS detection (키보드 처리 지연을 더 줄 필요가 있을 때)
+  // 모바일 iOS 여부
   const ua = navigator.userAgent || '';
   const isIOS = /iP(hone|od|ad)/.test(ua);
 
@@ -121,7 +130,6 @@
     return html;
   }
 
-  // 주 함수: blur -> delay -> 계산 (mobile keyboard commit 문제 회피)
   document.getElementById('calcBtn').addEventListener('click', function(){
     const maxWInput = document.getElementById('maxWeight');
     const repsInput = document.getElementById('reps');
@@ -129,10 +137,10 @@
     const weightInput = document.getElementById('weight');
     const heightInput = document.getElementById('height');
 
-    // 강제 포커스 해제(모바일 키보드 관련 값 반영 보장)
-    [maxWInput,repsInput,ageInput,weightInput,heightInput].forEach(el => { try{ el.blur(); }catch(e){}});
+    // 포커스 해제
+    [maxWInput,repsInput,ageInput,weightInput,heightInput].forEach(el => { try{ el.blur(); }catch(e){} });
 
-    const delay = isIOS ? 350 : 180; // iOS는 입력 반영이 느린 경우가 있어 딜레이를 조금 더 줌
+    const delay = isIOS ? 350 : 180;
 
     setTimeout(() => {
       const maxW = sanitizeNumber(maxWInput.value);
@@ -143,7 +151,6 @@
       const exercise = document.getElementById('exercise').value;
       const resultDiv = document.getElementById('result');
 
-      // 입력 검증
       if (isNaN(maxW) || maxW <= 0 || isNaN(reps) || reps <= 0) {
         resultDiv.innerHTML = '⚠️ 최대 반복 무게와 반복 횟수를 정확히 입력해 주세요.';
         resultDiv.classList.add('visible');
@@ -153,14 +160,28 @@
 
       // 1RM 추정 (Epley)
       const oneRM = Math.round(maxW * (1 + reps / 30));
-
-      // 현재 훈련 강도 퍼센트
       const trainingPct = Math.round((maxW / oneRM) * 100);
 
-      // 빌드 및 렌더
       try{
         resultDiv.innerHTML = buildTable(oneRM, trainingPct);
         resultDiv.classList.add('visible');
+        // GA 이벤트 전송 (버킷만)
+        if (typeof gtag === 'function') {
+          gtag('event', 'calculate_click', {
+            event_category: 'calculator',
+            event_label: 'calculate_button'
+          });
+
+          const bucket = (trainingPct >= 85) ? '85-100' :
+                         (trainingPct >= 75) ? '75-84' :
+                         (trainingPct >= 65) ? '65-74' : '20-64';
+
+          gtag('event', 'calculation_complete', {
+            event_category: 'calculator',
+            event_label: 'result_shown',
+            intensity_bucket: bucket
+          });
+        }
         setTimeout(()=>{ try{ resultDiv.scrollIntoView({behavior:'smooth',block:'start'}) }catch(e){} }, 200);
       }catch(err){
         resultDiv.innerHTML = '오류가 발생했습니다. 콘솔을 확인하세요.';
